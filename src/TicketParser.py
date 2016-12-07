@@ -1,4 +1,5 @@
 """
+TicketParser.py
 Written By Jack Li
 v1.0
 
@@ -15,21 +16,25 @@ API_KEY = "apikey=XZGN3MiGhFumbsF1Z93x3mGAG0M643gM"  # this is the API_Key given
 TEMP_API_KEY = "apikey=XZGN3MiGhFumbsF1Z93x3mGAG0M643gM"  # I used the online API key
 
 fields = 'Keyword', 'Setting'  # fields in GUI
+
+# list of words that will be eliminated from the search
 badwords = {"Tribute", "tribute", "TRIBUTE",
             "Access", "access", "ACCESS",
             "Rental", "rental", "RENTAL",
             "Rentals", "rentals", "RENTALS",
             "Buffet", "buffet", "BUFFET",
             "Celebration", "celebration", "CELEBRATION"}
+
+
 # This is a higher level class that requests data from server
 class TicketParser:
     # initializes our variables
     def __init__(self):
-        self.keyword = None
-        self.outputFile = None
-        self.content = None
-        self.next = None
-        self.event_list = None
+        self.keyword = None         # user input
+        self.outputFile = None      # name of output file
+        self.content = None         # raw data content
+        self.next = None            # dict information about next page
+        self.event_list = None      # parsed list of events
 
     # requests user input
     def input(self):
@@ -38,7 +43,6 @@ class TicketParser:
 
     # creates our output file
     def file_open(self):
-        print('{}'.format(self.keyword))
         self.outputFile = open('%s.txt' %self.keyword, 'w')
         self.outputFile.write('Name;Date;Venue;Link\n')
 
@@ -75,15 +79,15 @@ class TicketParser:
 class IndvEvent(TicketParser):
     # initializes all variables used by IndvEvent
     def __init__(self, event, file):
-        self.file = file
-        self.event = event
-        self.valid = True
-        self.venue = None
-        self.location = None
-        self.time = None
-        self.date = None
-        self.name = None
-        self.url = None
+        self.file = file        # name of output file
+        self.event = event      # all parsed information regarding event
+        self.valid = True       # Checks if we want the event or not
+        self.venue = None       # parsed venue name
+        self.location = None    # parsed location
+        self.time = None        # parsed event start time
+        self.date = None        # parsed event date
+        self.name = None        # parsed name of event
+        self.url = None         # parsed event url
 
     # parses for the venue
     def get_venue(self):
@@ -99,26 +103,28 @@ class IndvEvent(TicketParser):
     def get_name(self):
         self.name = self.event['name']
         words = self.name.split(" ")
+        # checks through list of bad words to determine events we do not want
         for word in words:
             for w in badwords:
                 if w == word:
                     self.valid = False
-
+                    break
 
     # parses for the URL
     def get_url(self):
         self.url = self.event['url']
-        # self.url = "#{}#outlauto#".format(self.event['url'])
 
     # parses for location
     def get_location(self):
         event_embedded = self.event['_embedded']
         event_venues = event_embedded['venues']
+        # we do not want events with no region
         for indv_venue in event_venues:
             if indv_venue.get('timezone') is None:
                 self.valid = False
                 continue
             location_parse = indv_venue.get('timezone').split('/')[0]
+            # we only want events in America and Canada
             if location_parse != 'America' and location_parse != 'Canada':
                 self.valid = False
                 continue
@@ -129,6 +135,7 @@ class IndvEvent(TicketParser):
         """Maybe use DateTBA and DateTBD"""
         event_dates = self.event['dates']
         event_start_time = event_dates['start']
+        # we do not want events with no start time
         if event_start_time.get('localTime') is None:
             self.valid = False
             print()
@@ -147,71 +154,40 @@ class IndvEvent(TicketParser):
         self.file.write('{};\n'.format(self.url))
 
 
-# recursively prints out everything in the json file
-# not quite working (used for testing)
-def recursion_print(rec, f, rank):
-    f.write("\n")
-    f.write(" " * rank * 2)
-    if type(rec) is list:
-        for x in rec:
-            print("{}: ".format(x))
-            f.write("{}: ".format(x))
-            if type(x) is dict:
-                for y in x:
-                    f.write("{}: ".format(y))
-                    # print("{}: ".format(y))
-                    recursion_print(x[y], f, rank + 1)
-            else:
-                f.write("{}: ".format(rec[x]))
-                recursion_print(rec[x], f, rank + 1)
-
-    if type(rec) is dict:
-        for z in rec:
-            f.write("{}: ".format(z))
-            # print("{}: ".format(z))
-            recursion_print(rec[z], f, rank + 1)
-        f.write("{} ".format(rec))
-        f.write("\n")
-        # print(rec)
+# helper function
+def write_event(tp, event):
+    ie = IndvEvent(event, tp.outputFile)
+    ie.get_venue()
+    ie.get_location()
+    ie.get_date_time()
+    ie.get_name()
+    ie.get_url()
+    if ie.valid:
+        ie.write_txt()
 
 
 # The function that loops through pages and utilizes class TicketParser and IndvEvent
 def search(keyword):
-    tp = TicketParser()
-    for entry in keyword:
+    tp = TicketParser()                             # initializes the higher level abstraction
+    """code section below should be partitioned tomorrow"""
+    for entry in keyword:                           # parses based on keyword
         tempkw = entry[1].get()
         break
     tp.keyword = tempkw
     tp.file_open()
-    tp.keyword = '&keyword=' + tempkw
+
+    tp.keyword = '&keyword=' + tempkw               # saves keyword and starts calling relevant functions
     tp.request()
     tp.get_event_list()
-    for event in tp.event_list:
-        ie = IndvEvent(event, tp.outputFile)
-        ie.get_venue()
-        ie.get_location()
-        ie.get_date_time()
-        ie.get_name()
-        ie.get_url()
-        if ie.valid:
-            ie.write_txt()
-
-    while tp.get_next() is not None:
-        f = open('raw.txt', 'w')
-        # recursionPrint(tp.content, f, 0)
+    for event in tp.event_list:                     # find info about each event in event_list
+        write_event(tp, event)
+    while tp.get_next() is not None:                # go to next page
         tp.set_next_keyword()
         tp.request()
-        tp.get_event_list()
-        for event in tp.event_list:
-            ie = IndvEvent(event, tp.outputFile)
-            ie.get_venue()
-            ie.get_location()
-            ie.get_date_time()
-            ie.get_name()
-            ie.get_url()
-            if ie.valid:
-                ie.write_txt()
+        for event in tp.event_list:                     # find info about each event in event_list
+            write_event(tp, event)
     tp.file_close()
+    print("...Data Parsing Completed\n")
 
 
 # Creates the GUI form
