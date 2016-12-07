@@ -5,8 +5,6 @@ v1.0
 Uses TicketMaster API to obtain information regarding concerts
 """
 
-
-# links
 import requests  # GET command
 import json  # data formatting
 from tkinter import *  # used to format GUI
@@ -17,8 +15,12 @@ API_KEY = "apikey=XZGN3MiGhFumbsF1Z93x3mGAG0M643gM"  # this is the API_Key given
 TEMP_API_KEY = "apikey=XZGN3MiGhFumbsF1Z93x3mGAG0M643gM"  # I used the online API key
 
 fields = 'Keyword', 'Setting'  # fields in GUI
-
-
+badwords = {"Tribute", "tribute", "TRIBUTE",
+            "Access", "access", "ACCESS",
+            "Rental", "rental", "RENTAL",
+            "Rentals", "rentals", "RENTALS",
+            "Buffet", "buffet", "BUFFET",
+            "Celebration", "celebration", "CELEBRATION"}
 # This is a higher level class that requests data from server
 class TicketParser:
     # initializes our variables
@@ -98,10 +100,10 @@ class IndvEvent(TicketParser):
         self.name = self.event['name']
         words = self.name.split(" ")
         for word in words:
-            if word == "Tribute" or word == "tribute" or word == "TRIBUTE":
-                self.valid = False
-            if word == "Access" or word == "access":
-                self.valid = False
+            for w in badwords:
+                if w == word:
+                    self.valid = False
+
 
     # parses for the URL
     def get_url(self):
