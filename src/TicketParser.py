@@ -4,6 +4,9 @@ v1.0
 
 Uses TicketMaster API to obtain information regarding concerts
 """
+
+
+# links
 import requests  # GET command
 import json  # data formatting
 from tkinter import *  # used to format GUI
@@ -33,8 +36,9 @@ class TicketParser:
 
     # creates our output file
     def file_open(self):
-        self.outputFile = open('out.txt', 'w')
-        self.outputFile.write('Name;Date;Venue;Venue Type;Link;Status;CFC;Target;Last Checked;Accounts\n')
+        print('{}'.format(self.keyword))
+        self.outputFile = open('%s.txt' %self.keyword, 'w')
+        self.outputFile.write('Name;Date;Venue;Link\n')
 
     # closes our output file
     def file_close(self):
@@ -94,7 +98,7 @@ class IndvEvent(TicketParser):
         self.name = self.event['name']
         words = self.name.split(" ")
         for word in words:
-            if word == "Tribute" or word == "tribute":
+            if word == "Tribute" or word == "tribute" or word == "TRIBUTE":
                 self.valid = False
             if word == "Access" or word == "access":
                 self.valid = False
@@ -102,6 +106,7 @@ class IndvEvent(TicketParser):
     # parses for the URL
     def get_url(self):
         self.url = self.event['url']
+        # self.url = "#{}#outlauto#".format(self.event['url'])
 
     # parses for location
     def get_location(self):
@@ -137,9 +142,7 @@ class IndvEvent(TicketParser):
         self.file.write('{};'.format(self.name))
         self.file.write('{}  {};'.format(self.date, self.time))
         self.file.write('{};'.format(self.venue))
-        self.file.write(';')  # venue type
-        self.file.write('{};'.format(self.url))
-        self.file.write(';;;;;\n')  # status,CFC,target,last checked, accounts
+        self.file.write('{};\n'.format(self.url))
 
 
 # recursively prints out everything in the json file
@@ -173,11 +176,11 @@ def recursion_print(rec, f, rank):
 # The function that loops through pages and utilizes class TicketParser and IndvEvent
 def search(keyword):
     tp = TicketParser()
-    tp.file_open()
     for entry in keyword:
         tempkw = entry[1].get()
         break
-
+    tp.keyword = tempkw
+    tp.file_open()
     tp.keyword = '&keyword=' + tempkw
     tp.request()
     tp.get_event_list()
