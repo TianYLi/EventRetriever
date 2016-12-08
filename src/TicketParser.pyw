@@ -9,13 +9,14 @@ Uses TicketMaster API to obtain information regarding concerts.
 import requests  # GET command
 import json  # data formatting
 from tkinter import *  # used to format GUI
+from tkinter.ttk import *
 
 ROOT_URL = "https://app.ticketmaster.com"  # used for retrieving data
 BASE_SEARCH = "/discovery/v2/events.json?"  # probably should be attached to ROOT_URL
 API_KEY = "apikey=XZGN3MiGhFumbsF1Z93x3mGAG0M643gM"  # this is the API_Key given by ticketmaster
 TEMP_API_KEY = "apikey=XZGN3MiGhFumbsF1Z93x3mGAG0M643gM"  # I used the online API key
 
-fields = 'Keyword', 'Setting'  # fields in GUI
+fields = ['Enter Artist Name']  # fields in GUI
 
 # list of words that will be eliminated from the search
 badwords = {"Tribute", "tribute", "TRIBUTE",
@@ -71,9 +72,11 @@ class TicketParser:
 
     # part of the parsing
     def get_event_list(self):
+        if self.content.get('_embedded') is None:
+            return -1
         _embedded = self.content['_embedded']
         self.event_list = _embedded['events']
-
+        return 0
 
 # This parses each individual event
 class IndvEvent(TicketParser):
@@ -107,6 +110,7 @@ class IndvEvent(TicketParser):
         for word in words:
             for w in badwords:
                 if w == word:
+                    print("{} is invalid".format(words))
                     self.valid = False
                     break
 
@@ -121,11 +125,13 @@ class IndvEvent(TicketParser):
         # we do not want events with no region
         for indv_venue in event_venues:
             if indv_venue.get('timezone') is None:
+                print("{} is invalid".format(indv_venue))
                 self.valid = False
                 continue
             location_parse = indv_venue.get('timezone').split('/')[0]
             # we only want events in America and Canada
             if location_parse != 'America' and location_parse != 'Canada':
+                print("{} is invalid".format(location_parse))
                 self.valid = False
                 continue
             self.location = location_parse
@@ -136,8 +142,8 @@ class IndvEvent(TicketParser):
         event_start_time = event_dates['start']
         # we do not want events with no start time
         if event_start_time.get('localTime') is None:
+            print("{} is invalid".format(event_start_time))
             self.valid = False
-            print()
         else:
             event_start_time = event_dates['start']
             self.time = event_start_time['localTime']
@@ -163,7 +169,8 @@ def write_event(tp, event):
     ie.get_url()
     if ie.valid:
         ie.write_txt()
-
+    else:
+        print("invalid")
 
 # The function that loops through pages and utilizes class TicketParser and IndvEvent
 def search(keyword):
@@ -176,29 +183,29 @@ def search(keyword):
 
     tp.keyword = '&keyword=' + tempkw               # saves keyword and starts calling relevant functions
     tp.request()
-    tp.get_event_list()
-    for event in tp.event_list:                     # find info about each event in event_list
-        write_event(tp, event)
-    while tp.get_next() is not None:                # go to next page
-        tp.set_next_keyword()
-        tp.request()
+    err = tp.get_event_list()
+    if err == 0:
         for event in tp.event_list:                     # find info about each event in event_list
             write_event(tp, event)
+        while tp.get_next() is not None:                # go to next page
+            tp.set_next_keyword()
+            tp.request()
+            for event in tp.event_list:                     # find info about each event in event_list
+                write_event(tp, event)
     tp.file_close()
     print("...Data Parsing Completed\n")
 
 
 # Creates the GUI form
-def makeform(root, fields):
+def makeform(root):
     entries = []
     for field in fields:
         row = Frame(root)
         lab = Label(row, width=22, text=field + ": ", anchor='w')
         ent = Entry(row)
-        ent.insert(0, "0")
         row.pack(side=TOP, fill=X, padx=5, pady=5)
         lab.pack(side=LEFT)
-        ent.pack(side=RIGHT, expand=YES, fill=X)
+        ent.pack(side=RIGHT, expand=YES, fill=X, pady=5, padx=5)
         entries.append((field, ent))
     return entries
 
@@ -210,14 +217,14 @@ def fetch(entries):
         text = entry[1].get()
         print('%s: "%s"' % (field, text))
 
-
 # main function initializes GUI
 if __name__ == '__main__':
     gui = Tk()
-    ents = makeform(gui, fields)
+    gui.title('Event Retriever')
+    ents = makeform(gui)
     gui.bind('<Return>', (lambda event, e=ents: search(e)))
     b1 = Button(gui, text='Search', command=(lambda e=ents: search(e)))
-    b1.pack(side=LEFT, padx=5, pady=5)
+    b1.pack(side=LEFT, padx=20, pady=5)
     b2 = Button(gui, text='Quit', command=gui.quit)
-    b2.pack(side=LEFT, padx=5, pady=5)
+    b2.pack(side=RIGHT, padx=20, pady=5)
     mainloop()
