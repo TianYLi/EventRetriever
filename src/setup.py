@@ -2,4 +2,4 @@
 from distutils.core import setup
 import py2exe
 
-setup(console=["TicketParser.py"])
+setup(console=["TicketParser.pyw"])

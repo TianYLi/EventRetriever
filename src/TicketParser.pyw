@@ -19,12 +19,12 @@ TEMP_API_KEY = "apikey=XZGN3MiGhFumbsF1Z93x3mGAG0M643gM"  # I used the online AP
 fields = ['Enter Artist Name']  # fields in GUI
 
 # list of words that will be eliminated from the search
-badwords = {"Tribute", "tribute", "TRIBUTE",
-            "Access", "access", "ACCESS",
-            "Rental", "rental", "RENTAL",
-            "Rentals", "rentals", "RENTALS",
-            "Buffet", "buffet", "BUFFET",
-            "Celebration", "celebration", "CELEBRATION"}
+badwords = {"Access", "access", "ACCESS", "Access:", "access:", "ACCESS:",
+            "Tribute", "tribute", "TRIBUTE", "Tribute:", "tribute:", "TRIBUTE:",
+            "Rental", "rental", "RENTAL", "Rental:", "rental:", "RENTAL:",
+            "Rentals", "rentals", "RENTALS", "Rentals:", "rentals:", "RENTALS:",
+            "Buffet", "buffet", "BUFFET", "Buffet:", "buffet:", "BUFFET:",
+            "Celebration", "celebration", "CELEBRATION", "Celebration:", "celebration:", "CELEBRATION:"}
 
 
 # This is a higher level class that requests data from server
@@ -66,7 +66,6 @@ class TicketParser:
     # used to move to the next page
     def set_next_keyword(self):
         link_next_href = self.next['href']
-        # print(link_next_href)
         spliced = link_next_href.split("?")
         self.keyword = '&' + spliced[1].split("{")[0]
 
@@ -110,9 +109,7 @@ class IndvEvent(TicketParser):
         for word in words:
             for w in badwords:
                 if w == word:
-                    print("{} is invalid".format(words))
                     self.valid = False
-                    break
 
     # parses for the URL
     def get_url(self):
@@ -125,13 +122,12 @@ class IndvEvent(TicketParser):
         # we do not want events with no region
         for indv_venue in event_venues:
             if indv_venue.get('timezone') is None:
-                print("{} is invalid".format(indv_venue))
+                # print("{} is invalid".format(indv_venue))
                 self.valid = False
                 continue
             location_parse = indv_venue.get('timezone').split('/')[0]
             # we only want events in America and Canada
             if location_parse != 'America' and location_parse != 'Canada':
-                print("{} is invalid".format(location_parse))
                 self.valid = False
                 continue
             self.location = location_parse
@@ -142,7 +138,6 @@ class IndvEvent(TicketParser):
         event_start_time = event_dates['start']
         # we do not want events with no start time
         if event_start_time.get('localTime') is None:
-            print("{} is invalid".format(event_start_time))
             self.valid = False
         else:
             event_start_time = event_dates['start']
@@ -169,8 +164,7 @@ def write_event(tp, event):
     ie.get_url()
     if ie.valid:
         ie.write_txt()
-    else:
-        print("invalid")
+
 
 # The function that loops through pages and utilizes class TicketParser and IndvEvent
 def search(keyword):
@@ -190,6 +184,7 @@ def search(keyword):
         while tp.get_next() is not None:                # go to next page
             tp.set_next_keyword()
             tp.request()
+            tp.get_event_list()
             for event in tp.event_list:                     # find info about each event in event_list
                 write_event(tp, event)
     tp.file_close()
